@@ -1,5 +1,5 @@
 # NeonInputDisplay
-A customizable basic Input Display for neon white, based on the style of the OBS input display previously developed by Glint.
+A customizable basic input display for Neon White, based on the style of the OBS input display previously developed by Glint.
 
 ![image](https://github.com/stxticOVFL/NeonInputDisplay/assets/29069561/016e6ce7-2a48-454e-870f-e682cc2fcf41)
 
