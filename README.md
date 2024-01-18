@@ -18,7 +18,7 @@ A customizable basic input display for Neon White, based on the style of the OBS
     - The preferences manager is required to customize the input display, using F5 (by default).
 4. Download the **Mono** version of [UniverseLib](https://github.com/sinai-dev/UniverseLib) and put it in the `Mods` folder.
     - The preferences manager **requires UniverseLib.** 
-5. Download `InputDisplay.dll` from the [Releases page](https://github.com/stxticOVFL/InputDisplay/releases/latest) and drop it in the `Mods` folder.
+5. Download `InputDisplay.dll` from the [Releases page](https://github.com/stxticOVFL/NeonInputDisplay/releases/latest) and drop it in the `Mods` folder.
 
 ## Building & Contributing
 This project uses Visual Studio 2022 as its project manager. When opening the Visual Studio solution, ensure your references are corrected by right clicking and selecting `Add Reference...` as shown below. 
