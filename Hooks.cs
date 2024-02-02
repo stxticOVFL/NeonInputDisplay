@@ -11,7 +11,6 @@ namespace InputDisplay
         [HarmonyPatch(typeof(PlayerUICardHUD), "UpdateHUD")]
         private static void PreUpdateHUD(PlayerUICardHUD __instance, ref PlayerCard card)
         {
-            if (!InputDisplay.Display) return;
 
             if (InputDisplay.Settings.SelectedColor.Value.a != 0)
                 DisplayObject.currentColor = InputDisplay.Settings.SelectedColor.Value.Alpha(1f);
@@ -22,7 +21,9 @@ namespace InputDisplay
                 else
                     DisplayObject.currentColor = card.data.cardColor.Alpha(1f);
             }
-            InputDisplay.Display.RefreshColor();
+
+            if (InputDisplay.Display)
+                InputDisplay.Display.RefreshColor();
         }
     }
 }

@@ -65,7 +65,7 @@ namespace InputDisplay.Objects
             _fake3 = LoadTexture(Resource.Fake3);
         }
 
-        internal static void Initialize() => new GameObject("Input Display", typeof(DisplayObject));
+        internal static void Initialize() => InputDisplay.Display = new GameObject("Input Display", typeof(DisplayObject)).GetComponent<DisplayObject>();
 
         private MeshRenderer SetupIcon(GameObject obj, Texture2D tex, double x, double y, float scale = 1)
         {
@@ -73,7 +73,7 @@ namespace InputDisplay.Objects
             var renderer = obj.GetComponent<MeshRenderer>();
             renderer.material.SetTexture("_MainTex", tex);
             renderer.material.SetTextureScale("_MainTex", new Vector2(0.5f, 0.5f));
-            renderer.material.renderQueue++;
+            // renderer.material.renderQueue++;
 
             obj.transform.localPosition = new Vector3((float)x, (float)y, 0);
             obj.transform.localRotation = Quaternion.identity;
@@ -152,8 +152,6 @@ namespace InputDisplay.Objects
             // BONUS: the 3rd ability icon is slightly off and is at a weird spot
             // let's move it and make it look even nicer
             cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3((float)off * 2, 0, 0);
-
-            InputDisplay.Display = this;
             RefreshColor();
             Update();
         }
