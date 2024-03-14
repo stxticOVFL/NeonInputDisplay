@@ -35,5 +35,5 @@ using MelonLoader;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
-[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "1.0.0", "stxticOVFL")]
+[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "1.0.2", "stxticOVFL")]
 [assembly: MelonGame("Little Flag Software, LLC", "Neon White")]

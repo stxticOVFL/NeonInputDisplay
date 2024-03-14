@@ -1,4 +1,4 @@
-﻿using InputDisplay.Objects;
+using InputDisplay.Objects;
 using MelonLoader;
 using UnityEngine;
 
@@ -21,7 +21,7 @@ namespace InputDisplay
         private void OnLevelLoadComplete()
         {
             Display = null;
-            if (Settings.Enabled.Value)
+            if (Singleton<Game>.Instance.GetCurrentLevelType() != LevelData.LevelType.Hub && Settings.Enabled.Value)
                 DisplayObject.Initialize();
         }
 
