@@ -1,6 +1,6 @@
-﻿using HarmonyLib;
-using InputDisplay.Objects;
+﻿using InputDisplay.Objects;
 using UnityEngine;
+using HarmonyLib;
 
 namespace InputDisplay
 {
@@ -13,7 +13,7 @@ namespace InputDisplay
         {
 
             if (InputDisplay.Settings.SelectedColor.Value.a != 0)
-                DisplayObject.currentColor = InputDisplay.Settings.SelectedColor.Value.Alpha(1f);
+                DisplayObject.currentColor = InputDisplay.Settings.SelectedColor.Value;
             else
             {
                 if (card.data.discardAbility == PlayerCardData.DiscardAbility.None) // katana/fist
@@ -21,9 +21,6 @@ namespace InputDisplay
                 else
                     DisplayObject.currentColor = card.data.cardColor.Alpha(1f);
             }
-
-            if (InputDisplay.Display)
-                InputDisplay.Display.RefreshColor();
         }
     }
 }

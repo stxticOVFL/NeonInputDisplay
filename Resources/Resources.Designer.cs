@@ -103,6 +103,16 @@ namespace InputDisplay.Resources {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] FakeS {
+            get {
+                object obj = ResourceManager.GetObject("FakeS", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] Fire {
             get {
                 object obj = ResourceManager.GetObject("Fire", resourceCulture);
@@ -146,6 +156,26 @@ namespace InputDisplay.Resources {
         internal static byte[] ScrollJump {
             get {
                 object obj = ResourceManager.GetObject("ScrollJump", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] ScrollSBack {
+            get {
+                object obj = ResourceManager.GetObject("ScrollSBack", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] ScrollSFront {
+            get {
+                object obj = ResourceManager.GetObject("ScrollSFront", resourceCulture);
                 return ((byte[])(obj));
             }
         }

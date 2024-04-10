@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using Resource = InputDisplay.Resources.Resources;
+using Settings = InputDisplay.InputDisplay.Settings;
 
 
 namespace InputDisplay.Objects
@@ -16,10 +17,14 @@ namespace InputDisplay.Objects
         private static Texture2D _discardTex;
         private static Texture2D _jumpTex;
         private static Texture2D _swapTex;
+
         private static Texture2D _scrollTex;
+        private static Texture2D _scrollSB;
+        private static Texture2D _scrollSF;
 
         private static Texture2D _fake2;
         private static Texture2D _fake3;
+        private static Texture2D _fakeS;
 
         private GameObject _holder;
 
@@ -33,36 +38,47 @@ namespace InputDisplay.Objects
         private MeshRenderer swap;
 
         private MeshRenderer scroll;
+        private MeshRenderer scrollSB;
+        private MeshRenderer scrollSF;
+
         private float scrollTimer = 0;
 
         public static Color currentColor;
-        private static float invertOff;
+        private static float offset;
 
-        private static Texture2D LoadTexture(byte[] image)
+        private float faustasCycle = 0;
+
+        private static Texture2D LoadTexture(byte[] image, string name)
         {
-            Texture2D SpriteTexture = new(0, 0);
-            SpriteTexture.LoadImage(image);
-            return SpriteTexture;
+            Texture2D tex = new(0, 0, TextureFormat.DXT5, false)
+            {
+                name = name
+            };
+            tex.LoadImage(image);
+            return tex;
         }
 
         public static void Setup()
         {
             // setup the textures
 
-            _upTex = LoadTexture(Resource.Up);
-            _downTex = LoadTexture(Resource.Down);
-            _leftTex = LoadTexture(Resource.Left);
-            _rightTex = LoadTexture(Resource.Right);
+            _upTex = LoadTexture(Resource.Up, "up");
+            _downTex = LoadTexture(Resource.Down, "down");
+            _leftTex = LoadTexture(Resource.Left, "left");
+            _rightTex = LoadTexture(Resource.Right, "right");
 
-            _fireTex = LoadTexture(Resource.Fire);
-            _discardTex = LoadTexture(Resource.Discard);
-            _jumpTex = LoadTexture(Resource.Jump);
-            _swapTex = LoadTexture(Resource.Swap);
+            _fireTex = LoadTexture(Resource.Fire, "fire");
+            _discardTex = LoadTexture(Resource.Discard, "discard");
+            _jumpTex = LoadTexture(Resource.Jump, "jump");
+            _swapTex = LoadTexture(Resource.Swap, "swap");
 
-            _scrollTex = LoadTexture(Resource.ScrollJump);
+            _scrollTex = LoadTexture(Resource.ScrollJump, "scrollB");
+            _scrollSB = LoadTexture(Resource.ScrollSBack, "scrollSB");
+            _scrollSF = LoadTexture(Resource.ScrollSFront, "scrollSF");
 
-            _fake2 = LoadTexture(Resource.Fake2);
-            _fake3 = LoadTexture(Resource.Fake3);
+            _fake2 = LoadTexture(Resource.Fake2, "fake2");
+            _fake3 = LoadTexture(Resource.Fake3, "fake3");
+            _fakeS = LoadTexture(Resource.FakeS, "fakeS");
         }
 
         internal static void Initialize() => InputDisplay.Display = new GameObject("Input Display", typeof(DisplayObject)).GetComponent<DisplayObject>();
@@ -71,12 +87,14 @@ namespace InputDisplay.Objects
         {
             // grab the renderer and set the texture
             var renderer = obj.GetComponent<MeshRenderer>();
+            obj.name = tex.name;
             renderer.material.SetTexture("_MainTex", tex);
-            renderer.material.SetTextureScale("_MainTex", new Vector2(0.5f, 0.5f));
+            renderer.material.SetTextureScale("_MainTex", new Vector2(1 / 16f, 0.25f));
             // renderer.material.renderQueue++;
 
             obj.transform.localPosition = new Vector3((float)x, (float)y, 0);
             obj.transform.localRotation = Quaternion.identity;
+            var fakeAA = obj.transform.GetChild(0).GetComponent<MeshRenderer>();
             if (scale != 1)
             {
                 var t = obj.transform.localScale;
@@ -86,25 +104,28 @@ namespace InputDisplay.Objects
                 // adjust position according to new scale
                 obj.transform.localPosition += new Vector3((t.x - pre) / 2, 0, 0);
 
-                var fakeAA = obj.transform.GetChild(0).gameObject.GetComponent<MeshRenderer>();
-                if (tex == _scrollTex)
-                {
-                    // if we're the scrolling texture, we don't use fakeAA and we can just toggle visibility
-                    renderer.material.SetTextureScale("_MainTex", new Vector2(0.5f, 1));
-                    renderer.material.renderQueue--;
-                    renderer.enabled = false;
-                    fakeAA.enabled = false;
-                }
-                else
-                {
                     // jump or fire/discard need a different fakeAA texture because just stretching it looks wrong
                     if (scale > 3)
                         fakeAA.material.SetTexture("_MainTex", _fake3);
                     else
                         fakeAA.material.SetTexture("_MainTex", _fake2);
-                }
-
             }
+
+            if (tex.name.StartsWith("scroll"))
+            {
+                // if we're the scrolling texture, we don't use fakeAA and we can just toggle visibility
+                renderer.material.SetTextureScale("_MainTex", new Vector2(1 / 8f, tex == _scrollSB ? 1 : 0.5f));
+                if (tex != _scrollSF)
+                    renderer.material.renderQueue--;
+                if (tex == _scrollSB)
+                {
+                    fakeAA.material.SetTexture("_MainTex", _fakeS);
+                    fakeAA.material.renderQueue = renderer.material.renderQueue + 1;
+                }
+                else
+                    fakeAA.enabled = false;
+            }
+
             obj.SetActive(true);
 
             return renderer;
@@ -147,33 +168,30 @@ namespace InputDisplay.Objects
 
             scroll = SetupIcon(Instantiate(abase, _holder.transform), _scrollTex, off * 3, -off * 1, 3.484375f);
 
+            scrollSB = SetupIcon(Instantiate(abase, _holder.transform), _scrollSB, off * 6, -off * 0.5f);
+            scrollSF = SetupIcon(Instantiate(abase, _holder.transform), _scrollSF, off * 6, -off * 0.5f);
+
+
             Destroy(abase);
 
             // BONUS: the 3rd ability icon is slightly off and is at a weird spot
             // let's move it and make it look even nicer
             cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3((float)off * 2, 0, 0);
-            RefreshColor();
             Update();
-        }
-
-        public void RefreshColor()
-        {
-            up?.material.SetColor("_TintColor", currentColor);
-            down?.material.SetColor("_TintColor", currentColor);
-            left?.material.SetColor("_TintColor", currentColor);
-            right?.material.SetColor("_TintColor", currentColor);
-
-            fire?.material.SetColor("_TintColor", currentColor);
-            discard?.material.SetColor("_TintColor", currentColor);
-            jump?.material.SetColor("_TintColor", currentColor);
-            swap?.material.SetColor("_TintColor", currentColor);
-
-            scroll?.material.SetColor("_TintColor", currentColor);
         }
 
         private void Update()
         {
-            invertOff = InputDisplay.Settings.Invert.Value ? 0.5f : 0;
+            var mode = Settings.DisplayMode;
+            var flip = Settings.InvertPressed.Value;
+
+            if (Settings.FaustasMode.Value)
+            {
+                faustasCycle = (faustasCycle + Time.deltaTime * Settings.FaustasSpeed.Value) % 360;
+                currentColor = Color.HSVToRGB(faustasCycle / 360f, 0.8f, 0.8f);
+            }
+
+            offset = ((int)mode) / 8f;
             var input = Singleton<GameInput>.Instance;
             var x = input.GetAxis(GameInput.GameActions.MoveHorizontal);
             var y = input.GetAxis(GameInput.GameActions.MoveVertical);
@@ -190,39 +208,82 @@ namespace InputDisplay.Objects
                 }
                 catch (Exception)
                 {
-                    scrollTimer = 0.1f;
-                    jumpd = false;
+                    var scroll = UnityEngine.InputSystem.Mouse.current.scroll;
+                    scrollTimer = scroll.y.ReadValue() > 0 ? 0.1f : -0.1f;
+                    jumpd = false ^ flip;
                 }
             }
             else // if we didn't jump on this frame we might be holding it so check it as you normally would without worry
-                jumpd = input.GetButton(GameInput.GameActions.Jump);
+                jumpd = input.GetButton(GameInput.GameActions.Jump) ^ flip;
 
 
-            var firei = input.GetButton(GameInput.GameActions.FireCard);
-            var discardi = input.GetButton(GameInput.GameActions.FireCardAlt);
-            var swapi = input.GetButton(GameInput.GameActions.SwapCard);
+            var firei = input.GetButton(GameInput.GameActions.FireCard) ^ flip;
+            var discardi = input.GetButton(GameInput.GameActions.FireCardAlt) ^ flip;
+            var swapi = input.GetButton(GameInput.GameActions.SwapCard) ^ flip;
 
             // unity does textures kinda weird
-            const float on = 0, off = -0.5f;
+            const float on = -0.75f, off = -0.25f;
 
-            up.material.SetTextureOffset("_MainTex", new Vector2(invertOff, y > 0 ? on : off));
-            down.material.SetTextureOffset("_MainTex", new Vector2(invertOff, y < 0 ? on : off));
+            up.material.SetTextureOffset("_MainTex", new Vector2(offset, (y > 0 ^ flip) ? on : off));
+            down.material.SetTextureOffset("_MainTex", new Vector2(offset, (y < 0 ^ flip) ? on : off));
+            left.material.SetTextureOffset("_MainTex", new Vector2(offset, (x < 0 ^ flip) ? on : off));
+            right.material.SetTextureOffset("_MainTex", new Vector2(offset, (x > 0 ^ flip) ? on : off));
 
-            left.material.SetTextureOffset("_MainTex", new Vector2(invertOff, x < 0 ? on : off));
-            right.material.SetTextureOffset("_MainTex", new Vector2(invertOff, x > 0 ? on : off));
+            fire.material.SetTextureOffset("_MainTex", new Vector2(offset, firei ? on : off));
+            discard.material.SetTextureOffset("_MainTex", new Vector2(offset, discardi ? on : off));
+            jump.material.SetTextureOffset("_MainTex", new Vector2(offset, jumpd ? on : off));
+            swap.material.SetTextureOffset("_MainTex", new Vector2(offset, swapi ? on : off));
 
-            jump.material.SetTextureOffset("_MainTex", new Vector2(invertOff, jumpd ? on : off));
+            scrollSB.material.SetTextureOffset("_MainTex", new Vector2(offset, 0));
 
-            fire.material.SetTextureOffset("_MainTex", new Vector2(invertOff, firei ? on : off));
-            discard.material.SetTextureOffset("_MainTex", new Vector2(invertOff, discardi ? on : off));
-            swap.material.SetTextureOffset("_MainTex", new Vector2(invertOff, swapi ? on : off));
+            up.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            down.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            left.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            right.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+
+            fire.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            discard.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            jump.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+            swap.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+
+            scrollSB.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
+
+            up.material.SetColor("_TintColor", (y > 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            down.material.SetColor("_TintColor", (y < 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            left.material.SetColor("_TintColor", (x < 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            right.material.SetColor("_TintColor", (x > 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+
+            fire.material.SetColor("_TintColor", firei && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            discard.material.SetColor("_TintColor", discardi && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            jump.material.SetColor("_TintColor", jumpd && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            swap.material.SetColor("_TintColor", swapi && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+
+            scroll.material.SetColor("_TintColor", Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
+            scrollSB.material.SetColor("_TintColor", Settings.ColoredOff.Value ? currentColor : Color.white);
+            scrollSF.material.SetColor("_TintColor", Settings.ColoredOff.Value ? Color.white : currentColor);
+
+            scrollSB.gameObject.SetActive(Settings.SeperateScroll.Value);
 
             scroll.enabled = false;
-            if (scrollTimer > 0)
+            scrollSF.enabled = false;
+            if (scrollTimer != 0)
             {
-                scrollTimer -= Time.deltaTime;
-                scroll.material.SetTextureOffset("_MainTex", new Vector2(invertOff, 0));
-                scroll.enabled = true;
+                var usedScroll = Settings.SeperateScroll.Value ? scrollSF : scroll;
+                bool negative = scrollTimer < 0;
+                if (negative)
+                {
+                    scrollTimer += Time.deltaTime;
+                    if (scrollTimer > 0)
+                        scrollTimer = 0;
+                }
+                else
+                {
+                    scrollTimer -= Time.deltaTime;
+                    if (scrollTimer < 0)
+                        scrollTimer = 0;
+                }
+                usedScroll.material.SetTextureOffset("_MainTex", new Vector2(offset, negative ? 0 : -0.5f));
+                usedScroll.enabled = true;
             }
         }
     }

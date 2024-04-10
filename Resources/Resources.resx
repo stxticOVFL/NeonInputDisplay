@@ -130,6 +130,9 @@
   <data name="Fake3" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Images\Fake2.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="FakeS" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Images\FakeS.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="Fire" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Images\Fire.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -144,6 +147,12 @@
   </data>
   <data name="ScrollJump" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Images\ScrollJump.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ScrollSBack" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Images\ScrollSBack.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="ScrollSFront" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>Images\ScrollSFront.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Swap" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>Images\Swap.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

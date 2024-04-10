@@ -35,5 +35,7 @@ using MelonLoader;
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
 
-[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "1.0.2-a", "stxticOVFL")]
+[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "1.1.0", "stxticOVFL")]
 [assembly: MelonGame("Little Flag Software, LLC", "Neon White")]
+[assembly: MelonColor(255, 255, 255, 255)]
+[assembly: MelonAuthorColor(255, 255, 184, 195)]
