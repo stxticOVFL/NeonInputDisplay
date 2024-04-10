@@ -11,7 +11,10 @@ A customizable basic input display for Neon White, based on the style of the OBS
   - (e.g. The icons become colored while the rest becomes black) 
 
 ## Installation
-
+## __*Automatic*__ (preferred)
+**This mod is part of [White's Storage!](https://github.com/stxticOVFL/WhitesStorage)**
+Follow the install instructions for that instead, and enable it in the `White's Storage` category in the preferences manager (F5 by default).
+### Manual
 1. Download [MelonLoader](https://github.com/LavaGang/MelonLoader/releases/latest) and install it onto your `Neon White.exe`.
 2. Run the game once. This will create required folders.
 3. Download the **Mono** version of [Melon Preferences Manager](https://github.com/Bluscream/MelonPreferencesManager/releases/latest), and put the .DLLs from that zip into the `Mods` folder of your Neon White install.
