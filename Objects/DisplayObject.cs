@@ -265,7 +265,10 @@ namespace InputDisplay.Objects
             if (pre != currentColor)
             {
                 foreach (var button in buttons)
-                    button.SetColor();
+                {
+                    if (button.material)
+                        button.SetColor();
+                }
             }
         }
 

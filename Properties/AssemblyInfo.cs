@@ -20,10 +20,10 @@ using MelonLoader;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyVersion("2.0.1.0")]
+[assembly: AssemblyFileVersion("2.0.1.0")]
 
-[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "2.0.0", "stxticOVFL")]
+[assembly: MelonInfo(typeof(InputDisplay.InputDisplay), "Input Display", "2.0.1", "stxticOVFL")]
 [assembly: MelonGame("Little Flag Software, LLC", "Neon White")]
 [assembly: MelonColor(255, 255, 255, 255)]
 [assembly: MelonAuthorColor(255, 255, 184, 195)]
