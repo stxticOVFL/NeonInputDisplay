@@ -118,46 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="Discard" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Discard.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Down" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Down.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Fake2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Fake1.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Fake3" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Fake2.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="FakeS" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\FakeS.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Fire" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Fire.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Jump" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Jump.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Left" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Left.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Right" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Right.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ScrollJump" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\ScrollJump.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ScrollSBack" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\ScrollSBack.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="ScrollSFront" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\ScrollSFront.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Swap" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Swap.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="Up" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>Images\Up.png;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="defaults" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>defaults.zip;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

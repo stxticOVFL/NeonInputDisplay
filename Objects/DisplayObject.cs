@@ -1,5 +1,14 @@
-﻿using System;
+﻿using MelonLoader.TinyJSON;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
+using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using UnityEngine;
+using static UILayoutGroup;
+using static UnityEngine.InputSystem.HID.HID;
 using Resource = InputDisplay.Resources.Resources;
 using Settings = InputDisplay.InputDisplay.Settings;
 
@@ -8,267 +17,201 @@ namespace InputDisplay.Objects
 {
     public class DisplayObject : MonoBehaviour
     {
-        private static Texture2D _leftTex;
-        private static Texture2D _rightTex;
-        private static Texture2D _upTex;
-        private static Texture2D _downTex;
+        static private DisplayObject copy;
+        static internal DisplayObject current;
 
-        private static Texture2D _fireTex;
-        private static Texture2D _discardTex;
-        private static Texture2D _jumpTex;
-        private static Texture2D _swapTex;
+        static Texture2D defaultFakeAA;
 
-        private static Texture2D _scrollTex;
-        private static Texture2D _scrollSB;
-        private static Texture2D _scrollSF;
+        static GameInput gameInput;
 
-        private static Texture2D _fake2;
-        private static Texture2D _fake3;
-        private static Texture2D _fakeS;
+        GameObject baseCopy;
+        DisplayButton[] buttons = [];
 
-        private GameObject _holder;
-
-        private MeshRenderer up;
-        private MeshRenderer down;
-        private MeshRenderer left;
-        private MeshRenderer right;
-        private MeshRenderer jump;
-        private MeshRenderer fire;
-        private MeshRenderer discard;
-        private MeshRenderer swap;
-
-        private MeshRenderer scroll;
-        private MeshRenderer scrollSB;
-        private MeshRenderer scrollSF;
-
-        private float scrollTimer = 0;
+        static float scrollTimer = 0;
 
         public static Color currentColor;
-        private static float offset;
-
         private float faustasCycle = 0;
 
-        private static Texture2D LoadTexture(byte[] image, string name)
+        internal static bool initialized = false;
+
+        static readonly Dictionary<Texture2D, (string, DateTime)> textures = [];
+        static readonly Dictionary<string, DateTime> layouts = [];
+
+        private static Texture2D LoadTexture(string path, string name)
         {
-            Texture2D tex = new(0, 0, TextureFormat.DXT5, false)
+            Texture2D tex = new(0, 0, TextureFormat.RGBA32, false)
             {
                 name = name
             };
-            tex.LoadImage(image);
+            tex.LoadImage(File.ReadAllBytes(path));
+            textures.Add(tex, (path, File.GetLastWriteTimeUtc(path)));
             return tex;
         }
 
         public static void Setup()
         {
-            // setup the textures
-
-            _upTex = LoadTexture(Resource.Up, "up");
-            _downTex = LoadTexture(Resource.Down, "down");
-            _leftTex = LoadTexture(Resource.Left, "left");
-            _rightTex = LoadTexture(Resource.Right, "right");
-
-            _fireTex = LoadTexture(Resource.Fire, "fire");
-            _discardTex = LoadTexture(Resource.Discard, "discard");
-            _jumpTex = LoadTexture(Resource.Jump, "jump");
-            _swapTex = LoadTexture(Resource.Swap, "swap");
-
-            _scrollTex = LoadTexture(Resource.ScrollJump, "scrollB");
-            _scrollSB = LoadTexture(Resource.ScrollSBack, "scrollSB");
-            _scrollSF = LoadTexture(Resource.ScrollSFront, "scrollSF");
-
-            _fake2 = LoadTexture(Resource.Fake2, "fake2");
-            _fake3 = LoadTexture(Resource.Fake3, "fake3");
-            _fakeS = LoadTexture(Resource.FakeS, "fakeS");
-        }
-
-        internal static void Initialize() => InputDisplay.Display = new GameObject("Input Display", typeof(DisplayObject)).GetComponent<DisplayObject>();
-
-        private MeshRenderer SetupIcon(GameObject obj, Texture2D tex, double x, double y, float scale = 1)
-        {
-            // grab the renderer and set the texture
-            var renderer = obj.GetComponent<MeshRenderer>();
-            obj.name = tex.name;
-            renderer.material.SetTexture("_MainTex", tex);
-            renderer.material.SetTextureScale("_MainTex", new Vector2(1 / 16f, 0.25f));
-            // renderer.material.renderQueue++;
-
-            obj.transform.localPosition = new Vector3((float)x, (float)y, 0);
-            obj.transform.localRotation = Quaternion.identity;
-            var fakeAA = obj.transform.GetChild(0).GetComponent<MeshRenderer>();
-            if (scale != 1)
-            {
-                var t = obj.transform.localScale;
-                float pre = t.x;
-                t.x *= scale;
-                obj.transform.localScale = t;
-                // adjust position according to new scale
-                obj.transform.localPosition += new Vector3((t.x - pre) / 2, 0, 0);
-
-                    // jump or fire/discard need a different fakeAA texture because just stretching it looks wrong
-                    if (scale > 3)
-                        fakeAA.material.SetTexture("_MainTex", _fake3);
-                    else
-                        fakeAA.material.SetTexture("_MainTex", _fake2);
-            }
-
-            if (tex.name.StartsWith("scroll"))
-            {
-                // if we're the scrolling texture, we don't use fakeAA and we can just toggle visibility
-                renderer.material.SetTextureScale("_MainTex", new Vector2(1 / 8f, tex == _scrollSB ? 1 : 0.5f));
-                if (tex != _scrollSF)
-                    renderer.material.renderQueue--;
-                if (tex == _scrollSB)
-                {
-                    fakeAA.material.SetTexture("_MainTex", _fakeS);
-                    fakeAA.material.renderQueue = renderer.material.renderQueue + 1;
-                }
-                else
-                    fakeAA.enabled = false;
-            }
-
-            obj.SetActive(true);
-
-            return renderer;
-        }
-
-        private void Start()
-        {
             var cardUI = RM.ui.cardHUDUI;
-            transform.SetParent(cardUI.transform, false);
-            // we add here so it sits nicely under the ability icon holder
-            transform.localPosition = new Vector3(0, -0.666f, 0) + cardUI.abilityIconHolder.transform.localPosition;
-            transform.localRotation = Quaternion.identity;
 
-            // copy the existing icon holder
-            _holder = Instantiate(cardUI.abilityIconHolder, transform);
-            foreach (Transform t in _holder.transform)
+            if (!copy)
             {
-                // eliminate all but the first one.
-                if (t.GetSiblingIndex() == 0)
-                    continue;
-                Destroy(t.gameObject);
+                copy = new GameObject("Input Display", typeof(DisplayObject)).GetComponent<DisplayObject>();
+                copy.transform.localPosition = new Vector3(0, -0.666f, 0) + cardUI.abilityIconHolder.transform.localPosition;
+                copy.transform.localRotation = Quaternion.identity;
+                copy.gameObject.SetActive(false);
+
+                var holder = Instantiate(cardUI.abilityIconHolder, copy.transform);
+                holder.transform.localPosition = Vector3.zero;
+                foreach (Transform t in holder.transform)
+                {
+                    // eliminate all but the first one.
+                    if (t.GetSiblingIndex() == 0)
+                        continue;
+                    Destroy(t.gameObject);
+                }
+                // the sole survivor will be the base
+                copy.baseCopy = holder.transform.GetChild(0).gameObject;
+                copy.baseCopy.SetActive(false);
+
+                defaultFakeAA = (Texture2D)copy.baseCopy.transform.GetChild(0).GetComponent<MeshRenderer>().material.mainTexture;
+
+                DontDestroyOnLoad(copy.gameObject);
             }
-            // the sole survivor (which will be killed later) will be the base
-            var abase = _holder.transform.GetChild(0).gameObject;
-            _holder.transform.DetachChildren();
-            _holder.transform.localPosition = Vector3.zero;
 
-            const double off = 0.666;
+            gameInput = Singleton<GameInput>.Instance;
+            copy.Construct();
 
-            up = SetupIcon(Instantiate(abase, _holder.transform), _upTex, off * 1, 0);
-            down = SetupIcon(Instantiate(abase, _holder.transform), _downTex, off * 1, -off * 1);
-            left = SetupIcon(Instantiate(abase, _holder.transform), _leftTex, 0, -off * 1);
-            right = SetupIcon(Instantiate(abase, _holder.transform), _rightTex, off * 2, -off * 1);
-
-            // scale floats at end are based on their texture width divided by regular
-            fire = SetupIcon(Instantiate(abase, _holder.transform), _fireTex, off * 2, 0, 2.234375f);
-            discard = SetupIcon(Instantiate(abase, _holder.transform), _discardTex, off * 4, 0, 2.234375f);
-            jump = SetupIcon(Instantiate(abase, _holder.transform), _jumpTex, off * 3, -off * 1, 3.484375f);
-            swap = SetupIcon(Instantiate(abase, _holder.transform), _swapTex, 0, 0);
-
-            scroll = SetupIcon(Instantiate(abase, _holder.transform), _scrollTex, off * 3, -off * 1, 3.484375f);
-
-            scrollSB = SetupIcon(Instantiate(abase, _holder.transform), _scrollSB, off * 6, -off * 0.5f);
-            scrollSF = SetupIcon(Instantiate(abase, _holder.transform), _scrollSF, off * 6, -off * 0.5f);
-
-
-            Destroy(abase);
-
-            // BONUS: the 3rd ability icon is slightly off and is at a weird spot
-            // let's move it and make it look even nicer
-            cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3((float)off * 2, 0, 0);
-            Update();
+            if (current)
+            {
+                Destroy(current);
+                copy.StartCoroutine(WaitForInit());
+            }
         }
 
-        private void Update()
+        static IEnumerator WaitForInit()
         {
-            var mode = Settings.DisplayMode;
-            var flip = Settings.InvertPressed.Value;
+            yield return null;
+            Initialize();
+        }
 
-            if (Settings.FaustasMode.Value)
+        static ProxyObject LoadJSON(string path, bool missing = false)
+        {
+            try
             {
-                faustasCycle = (faustasCycle + Time.deltaTime * Settings.FaustasSpeed.Value) % 360;
-                currentColor = Color.HSVToRGB(faustasCycle / 360f, 0.8f, 0.8f);
+                var r = (ProxyObject)JSON.Load(File.ReadAllText(path));
+                layouts.Add(path, File.GetLastWriteTimeUtc(path));
+                return r;
+            }
+            catch (Exception e)
+            {
+                if (e is not FileNotFoundException || missing)
+                    InputDisplay.Logger.Error("Failed to load JSON: " + e);
+                layouts.Add(path, DateTime.MinValue);
+
+                return null;
+            }
+        }
+
+        void Construct()
+        {
+            // only to be used by copy
+
+            initialized = false;
+            textures.Clear();
+            layouts.Clear();
+            var pathbuf = Path.Combine(InputDisplay.Folder, "Layouts", Settings.layout.Value) + ".json";
+            var layout = LoadJSON(pathbuf, true);
+            if (layout == null)
+                return;
+
+            pathbuf = Path.Combine(InputDisplay.Folder, "Textures", Settings.onTexture.Value, "override.json");
+            var onOverride = LoadJSON(pathbuf);
+            pathbuf = Path.Combine(InputDisplay.Folder, "Textures", Settings.offTexture.Value, "override.json");
+            var offOverride = LoadJSON(pathbuf);
+
+            static void CheckOverride(ProxyObject ov, DisplayProperties props, string name)
+            {
+                if (ov == null)
+                    return;
+                if (ov.Keys.Contains("_ALL"))
+                    JsonUtility.FromJsonOverwrite(ov["_ALL"].ToJSON(), props);
+                if (ov.Keys.Contains(name))
+                    JsonUtility.FromJsonOverwrite(ov[name].ToJSON(), props);
             }
 
-            offset = ((int)mode) / 8f;
-            var input = Singleton<GameInput>.Instance;
-            var x = input.GetAxis(GameInput.GameActions.MoveHorizontal);
-            var y = input.GetAxis(GameInput.GameActions.MoveVertical);
-            var jumpd = input.GetButtonDown(GameInput.GameActions.Jump, GameInput.InputType.Game);
-            if (jumpd)
+            List<DisplayButton> newb = [];
+            foreach (var kv in layout)
             {
-                // if jump was just pushed on this frame, they either pressed spacebar or used a quick frame method like scrolling
-                // so we use neon white's code against it
-                try
+                var button = DisplayButton.Create(baseCopy, kv.Key, (ProxyObject)kv.Value);
+
+                CheckOverride(onOverride, button.pressed, kv.Key);
+                CheckOverride(offOverride, button.unpressed, kv.Key);
+
+                button.Finish();
+                newb.Add(button);
+            }
+
+            foreach (var b in buttons)
+            {
+                Destroy(b.pressed);
+                Destroy(b.unpressed);
+                Destroy(b.gameObject);
+            }
+            buttons = newb.ToArray();
+        }
+
+        void BuildList() => buttons = GetComponentsInChildren<DisplayButton>(false);
+
+        static bool AnyOutdated()
+        {
+            foreach (var kv in layouts)
+            {
+                var lastWrite = DateTime.MinValue;
+                if (File.Exists(kv.Key))
+                    lastWrite = File.GetLastWriteTimeUtc(kv.Key);
+                if (lastWrite != kv.Value)
+                    return true;
+            }
+            return false;
+        }
+
+        internal static void Initialize()
+        {
+            if (!copy || AnyOutdated())
+            {
+                Setup();
+                copy.StartCoroutine(WaitForInit());
+
+                return;
+            }
+            else
+            {
+                // just check textures 
+                foreach (var kv in textures)
                 {
-                    // this actually errors on scroll jump and a good chunk of the player's Update isn't actually run because of it in basegame
-                    // but since we know that we can use that to our advantage
-                    input.GetButton(GameInput.GameActions.Jump);
-                }
-                catch (Exception)
-                {
-                    var scroll = UnityEngine.InputSystem.Mouse.current.scroll;
-                    scrollTimer = scroll.y.ReadValue() > 0 ? 0.1f : -0.1f;
-                    jumpd = false ^ flip;
+                    if (File.Exists(kv.Value.Item1) && File.GetLastWriteTimeUtc(kv.Value.Item1) != kv.Value.Item2)
+                        kv.Key.LoadImage(File.ReadAllBytes(kv.Value.Item1));
                 }
             }
-            else // if we didn't jump on this frame we might be holding it so check it as you normally would without worry
-                jumpd = input.GetButton(GameInput.GameActions.Jump) ^ flip;
+            initialized = true;
+            scrollTimer = 0;
 
+            var cardUI = RM.ui.cardHUDUI;
+            current = Instantiate(copy.gameObject, cardUI.transform).GetComponent<DisplayObject>();
 
-            var firei = input.GetButton(GameInput.GameActions.FireCard) ^ flip;
-            var discardi = input.GetButton(GameInput.GameActions.FireCardAlt) ^ flip;
-            var swapi = input.GetButton(GameInput.GameActions.SwapCard) ^ flip;
+            const float off = 0.66666666f;
+            cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3(off * 2, 0, 0);
 
-            // unity does textures kinda weird
-            const float on = -0.75f, off = -0.25f;
+            current.BuildList();
+            current.gameObject.SetActive(true);
+        }
 
-            up.material.SetTextureOffset("_MainTex", new Vector2(offset, (y > 0 ^ flip) ? on : off));
-            down.material.SetTextureOffset("_MainTex", new Vector2(offset, (y < 0 ^ flip) ? on : off));
-            left.material.SetTextureOffset("_MainTex", new Vector2(offset, (x < 0 ^ flip) ? on : off));
-            right.material.SetTextureOffset("_MainTex", new Vector2(offset, (x > 0 ^ flip) ? on : off));
-
-            fire.material.SetTextureOffset("_MainTex", new Vector2(offset, firei ? on : off));
-            discard.material.SetTextureOffset("_MainTex", new Vector2(offset, discardi ? on : off));
-            jump.material.SetTextureOffset("_MainTex", new Vector2(offset, jumpd ? on : off));
-            swap.material.SetTextureOffset("_MainTex", new Vector2(offset, swapi ? on : off));
-
-            scrollSB.material.SetTextureOffset("_MainTex", new Vector2(offset, 0));
-
-            up.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            down.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            left.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            right.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-
-            fire.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            discard.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            jump.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-            swap.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-
-            scrollSB.transform.GetChild(0).gameObject.SetActive(!Settings.Borderless.Value);
-
-            up.material.SetColor("_TintColor", (y > 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            down.material.SetColor("_TintColor", (y < 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            left.material.SetColor("_TintColor", (x < 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            right.material.SetColor("_TintColor", (x > 0 ^ flip) && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-
-            fire.material.SetColor("_TintColor", firei && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            discard.material.SetColor("_TintColor", discardi && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            jump.material.SetColor("_TintColor", jumpd && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            swap.material.SetColor("_TintColor", swapi && Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-
-            scroll.material.SetColor("_TintColor", Settings.ColoredOff.Value && !Settings.AlwaysColor.Value ? Color.white : currentColor);
-            scrollSB.material.SetColor("_TintColor", Settings.ColoredOff.Value ? currentColor : Color.white);
-            scrollSF.material.SetColor("_TintColor", Settings.ColoredOff.Value ? Color.white : currentColor);
-
-            scrollSB.gameObject.SetActive(Settings.SeperateScroll.Value);
-
-            scroll.enabled = false;
-            scrollSF.enabled = false;
-            if (scrollTimer != 0)
+        void Update()
+        {
+            var j = gameInput.Controls.Gameplay.Jump;
+            if (j.activeControl != null && j.activeControl.valueType == typeof(Vector2))
+                scrollTimer = j.ReadValue<Vector2>().y > 0 ? 0.1f : -0.1f;
+            else if (scrollTimer != 0)
             {
-                var usedScroll = Settings.SeperateScroll.Value ? scrollSF : scroll;
                 bool negative = scrollTimer < 0;
                 if (negative)
                 {
@@ -282,8 +225,297 @@ namespace InputDisplay.Objects
                     if (scrollTimer < 0)
                         scrollTimer = 0;
                 }
-                usedScroll.material.SetTextureOffset("_MainTex", new Vector2(offset, negative ? 0 : -0.5f));
-                usedScroll.enabled = true;
+            }
+
+            if (Settings.faustasMode.Value)
+            {
+                faustasCycle = (faustasCycle + Time.deltaTime * Settings.faustasSpeed.Value) % 360;
+                currentColor = Color.HSVToRGB(faustasCycle / 360f, 0.8f, 0.8f);
+
+                foreach (var button in buttons)
+                    button.SetColor();
+            }
+
+            else
+            {
+                var sel = Settings.selectedColor.Value;
+                if (sel.a != 0)
+                {
+                    if (currentColor != sel.Alpha(1))
+                    {
+                        currentColor = sel.Alpha(1);
+                        foreach (var button in buttons)
+                            button.SetColor();
+                    }
+                }
+            }
+        }
+
+        internal void SetCardColor(PlayerCard card)
+        {
+            if (Settings.faustasMode.Value || Settings.selectedColor.Value.a > 0)
+                return;
+
+            var pre = currentColor;
+            if (card.data.discardAbility == PlayerCardData.DiscardAbility.None) // katana/fist
+                currentColor = new Color(0.5f, 0.5f, 0.5f, 1f);
+            else
+                currentColor = card.data.cardColor.Alpha(1f);
+
+            if (pre != currentColor)
+            {
+                foreach (var button in buttons)
+                    button.SetColor();
+            }
+        }
+
+        [Serializable]
+        class DisplayProperties : ScriptableObject
+        {
+            public float x;
+            public float y;
+            public float scale = 1;
+            public int layer = 0;
+            public string fakeAA = null;
+            public bool forceInvisible;
+
+            [NonSerialized]
+            internal Texture2D _fakeAA;
+
+            [NonSerialized]
+            internal Texture2D _tex;
+
+            internal void Finish()
+            {
+                _fakeAA = defaultFakeAA;
+
+                if (fakeAA == "")
+                    _fakeAA = InputDisplay.Blank;
+                else if (fakeAA != null)
+                {
+                    var fakeP = Path.Combine(InputDisplay.Folder, "Textures", $"{fakeAA}.png");
+                    if (File.Exists(fakeP))
+                        _fakeAA = LoadTexture(fakeP, fakeAA);
+                }
+            }
+        }
+
+        class DisplayButton : MonoBehaviour
+        {
+            public DisplayProperties pressed;
+            public DisplayProperties unpressed;
+
+            public int _axis = 0;
+            public GameInput.GameActions _gameAction = GameInput.GameActions.DialogueAdvance;
+            public KeyCode _keycode = KeyCode.None;
+
+            internal Material _fakeAA;
+            internal Material material;
+
+            static readonly int tintColor = Shader.PropertyToID("_TintColor");
+            static readonly int mainTex = Shader.PropertyToID("_MainTex");
+
+            Func<bool> _downFunc;
+            bool _lastState = false;
+
+            event Action<DisplayProperties, DisplayProperties> SwapChain;
+
+            internal static DisplayButton Create(GameObject prefab, string name, ProxyObject props)
+            {
+                var obj = Instantiate(prefab, prefab.transform.parent);
+                var button = obj.AddComponent<DisplayButton>();
+
+                if (props.TryGetValue("gameAction", out var variantBuf))
+                    Enum.TryParse(variantBuf.ToString(), out button._gameAction);
+                if (props.TryGetValue("axis", out variantBuf))
+                {
+                    var str = variantBuf.ToString();
+                    if (str == "-")
+                        button._axis = -1;
+                    else if (str == "+")
+                        button._axis = 1;
+                }
+
+                if (props.TryGetValue("keycode", out variantBuf))
+                    Enum.TryParse(variantBuf.ToString(), out button._keycode);
+
+
+                button.pressed = ScriptableObject.CreateInstance<DisplayProperties>();
+                JsonUtility.FromJsonOverwrite(props.ToJSON(), button.pressed);
+                button.unpressed = ScriptableObject.CreateInstance<DisplayProperties>();
+                JsonUtility.FromJsonOverwrite(props.ToJSON(), button.unpressed);
+
+                button.name = name;
+                obj.SetActive(true);
+                return button;
+            }
+
+            void Start()
+            {
+                if (_gameAction != GameInput.GameActions.DialogueAdvance)
+                {
+                    if (_gameAction == GameInput.GameActions.Jump)
+                    {
+                        if (_axis != 0)
+                            _downFunc = Coyote;
+                        else
+                            _downFunc = Jump;
+                    }
+                    else
+                    {
+                        if (_axis != 0)
+                            _downFunc = GameActionAxis;
+                        else
+                            _downFunc = GameActionPress;
+                    }
+                }
+                else if (_keycode != KeyCode.None)
+                    _downFunc = KeycodePress;
+
+                // build the Swap Chain .
+                const float off = 0.66666666f;
+
+                if (pressed.x != unpressed.x || pressed.y != unpressed.y)
+                {
+                    SwapChain += (prop, _) =>
+                    {
+                        transform.localPosition = new(off * prop.x, off * -prop.y);
+                    };
+                }
+                if (pressed.scale != unpressed.scale)
+                {
+                    SwapChain += (prop, pre) =>
+                    {
+                        // TODO: check the math on this. im lazy
+                        var t = transform.localScale;
+                        transform.localPosition -= new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
+                        t /= pre.scale;
+                        var preS = t;
+                        t *= prop.scale;
+                        transform.localScale = t;
+                        transform.localPosition += new Vector3((t.x - preS.x) / 2, (t.y - preS.y) / 2, 0);
+                    };
+                }
+                if (pressed.layer != unpressed.layer)
+                {
+                    SwapChain += (prop, pre) =>
+                    {
+                        material.renderQueue -= pre.layer;
+                        material.renderQueue += prop.layer;
+                        _fakeAA.renderQueue = material.renderQueue + 1;
+                    };
+                }
+                if (pressed.fakeAA != unpressed.fakeAA)
+                {
+                    SwapChain += (prop, _) => _fakeAA.SetTexture(mainTex, prop._fakeAA);
+                }
+
+                SwapChain += (prop, _) =>
+                {
+                    material.SetTexture(mainTex, prop._tex);
+                    SetColor();
+                };
+
+                material = GetComponentInChildren<MeshRenderer>().material;
+                material.SetTexture(mainTex, unpressed._tex);
+
+                _fakeAA = transform.GetChild(0).GetComponent<MeshRenderer>().material;
+                _fakeAA.SetTexture(mainTex, unpressed._fakeAA);
+
+                material.renderQueue += unpressed.layer;
+                _fakeAA.renderQueue = material.renderQueue + 1;
+
+                SetColor();
+            }
+
+            internal void Finish()
+            {
+                const float off = 0.66666666f;
+
+                pressed.Finish();
+                unpressed.Finish();
+
+                Texture2D GetTexture(string path)
+                {
+                    path = Path.Combine(InputDisplay.Folder, "Textures", path, $"{name}.png");
+                    if (File.Exists(path))
+                        return LoadTexture(path, name);
+                    else
+                        return InputDisplay.Blank;
+                }
+
+                transform.localPosition = new(off * unpressed.x, off * -unpressed.y);
+
+                pressed._tex = GetTexture(Settings.onTexture.Value);
+                if (pressed.forceInvisible)
+                    unpressed._tex = InputDisplay.Blank;
+                else
+                    unpressed._tex = GetTexture(Settings.offTexture.Value);
+
+                float aspect = 0;
+                if (unpressed._tex != InputDisplay.Blank)
+                    aspect = (float)unpressed._tex.width / unpressed._tex.height;
+                else if (pressed._tex != InputDisplay.Blank)
+                    aspect = (float)pressed._tex.width / pressed._tex.height;
+                else
+                    return; // both textures blank?? why the hell we do all this
+
+                var t = transform.localScale;
+                var pre = t;
+                if (aspect > 1)
+                    t.x *= aspect;
+                else
+                    t.y /= aspect;
+                transform.localScale = t * unpressed.scale;
+                transform.localPosition += new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
+            }
+
+            void Update()
+            {
+                var s = _downFunc();
+                if (_lastState != s)
+                {
+                    var pre = _lastState ? pressed : unpressed;
+                    _lastState = s;
+                    var post = _lastState ? pressed : unpressed;
+
+                    SwapChain(post, pre);
+                }
+            }
+
+            public void SetColor()
+            {
+                var colorMode = Settings.colorMode.Value;
+                if (colorMode == InputDisplay.ColorMode.Always ||
+                  ((_lastState ? InputDisplay.ColorMode.Pressed : InputDisplay.ColorMode.Unpressed) == colorMode))
+                    material.SetColor(tintColor, currentColor);
+                else
+                    material.SetColor(tintColor, Color.white);
+            }
+
+
+            // down funcs
+            bool GameActionPress() => gameInput.GetButton(_gameAction);
+            bool GameActionAxis() => Math.Sign(gameInput.GetAxis(_gameAction)) == _axis;
+
+            bool KeycodePress() => UniverseLib.Input.InputManager.GetKey(_keycode);
+
+            bool Jump()
+            {
+                var j = gameInput.Controls.Gameplay.Jump;
+                if (j == null)
+                    return false;
+                if (j.activeControl != null && j.activeControl.valueType == typeof(Vector2))
+                    return _lastState; // kinda crazy but
+
+                return Math.Abs(j.ReadValue<float>()) > 0;
+                //return gameInput.GetButton(_gameAction);
+            }
+
+            bool Coyote()
+            {
+                // the scrolltimer code is handled by the DisplayObject
+                return Math.Sign(scrollTimer) == _axis;
             }
         }
     }

@@ -1,86 +1,213 @@
-using System;
 using InputDisplay.Objects;
-using UnityEngine;
 using MelonLoader;
 using MelonLoader.Preferences;
+using MelonLoader.Utils;
+using NeonLite;
+using NeonLite.Modules;
+using System;
+using System.IO;
+using System.IO.Compression;
+using UnityEngine;
 
 namespace InputDisplay
 {
-    public class InputDisplay : MelonMod
+    public class InputDisplay : MelonMod, IModule
     {
-        public static DisplayObject Display { get; set; }
-        public static new HarmonyLib.Harmony Harmony { get; private set; }
+        internal static Texture2D Blank { get; private set; }
+
+        internal static MelonLogger.Instance Logger { get; private set; }
+
+        public override void OnInitializeMelon()
+        {
+            NeonLite.NeonLite.LoadModules(MelonAssembly);
+            Logger = LoggerInstance;
+
+            if (!Directory.Exists(Folder))
+            {
+                // extract the defasults
+                Directory.CreateDirectory(Folder);
+                var p = Path.Combine(Folder, "defaults.zip");
+                File.WriteAllBytes(p, Resources.Resources.defaults);
+                ZipFile.ExtractToDirectory(p, MelonEnvironment.ModsDirectory);
+                File.Delete(p);
+            }
+        }
 
         public override void OnLateInitializeMelon()
         {
-            Harmony = new("InputDisplay");
+            Blank = new Texture2D(1, 1, TextureFormat.Alpha8, false);
+            Blank.SetPixel(0, 0, Color.clear);
+            Blank.Apply();
+            Blank.name = "BLANK_TEXTURE";
 
-            DisplayObject.Setup();
             Settings.Register();
-            Singleton<Game>.Instance.OnLevelLoadComplete += OnLevelLoadComplete;
         }
 
-        private void OnLevelLoadComplete()
+#pragma warning disable CS0414
+        const bool priority = true;
+        static bool active = true;
+
+        static void Activate(bool activate)
         {
-            Display = null;
-            if (Singleton<Game>.Instance.GetCurrentLevelType() != LevelData.LevelType.Hub && Settings.Enabled.Value)
+            Patching.TogglePatch(activate, typeof(PlayerUICardHUD), "UpdateHUD", PreUpdateHUD, Patching.PatchTarget.Prefix);
+            active = activate;
+        }
+
+        private static bool OnLevelLoad(LevelData level)
+        {
+            if (level && level.type != LevelData.LevelType.Hub)
+            {
                 DisplayObject.Initialize();
+                return DisplayObject.initialized;
+            }
+            return true;
         }
 
-        [Flags]
-        public enum DisplayModes
+        private static void PreUpdateHUD(PlayerCard card)
         {
-            None = 0,
-            BlackBackground = 1 << 0,
-            Borderless = 1 << 1,
-            ColoredOff = 1 << 2,
+            if (DisplayObject.current)
+                DisplayObject.current.SetCardColor(card);
         }
 
+
+        public enum ColorMode
+        {
+            Pressed = 0,
+            Unpressed = 1,
+            Always = 2
+        }
+
+        internal static string Folder => Path.Combine(MelonEnvironment.ModsDirectory, Settings.h);
 
         public static class Settings
         {
+            // kept for old
+            [Flags]
+            enum DisplayModes
+            {
+                None = 0,
+                BlackBackground = 1 << 0,
+                Borderless = 1 << 1,
+                ColoredOff = 1 << 2,
+            }
+
+            internal const string h = "InputDisplay";
+
             public static MelonPreferences_Category Category;
 
-            public static MelonPreferences_Entry<bool> Enabled;
-            public static MelonPreferences_Entry<Color> SelectedColor;
+            public static MelonPreferences_Entry<bool> enabled;
+            public static MelonPreferences_Entry<string> offTexture;
+            public static MelonPreferences_Entry<string> onTexture;
+            public static MelonPreferences_Entry<string> layout;
 
+            public static MelonPreferences_Entry<Color> selectedColor;
+            public static MelonPreferences_Entry<ColorMode> colorMode;
             public static MelonPreferences_Entry<bool> AlwaysColor;
-            public static MelonPreferences_Entry<bool> FaustasMode;
-            public static MelonPreferences_Entry<float> FaustasSpeed;
+            public static MelonPreferences_Entry<bool> faustasMode;
+            public static MelonPreferences_Entry<float> faustasSpeed;
 
-            public static MelonPreferences_Entry<bool> BlackBG;
-            public static MelonPreferences_Entry<bool> Borderless;
-            public static MelonPreferences_Entry<bool> ColoredOff;
-            public static MelonPreferences_Entry<bool> SeperateScroll;
-
-            public static MelonPreferences_Entry<bool> InvertPressed;
-
-            public static DisplayModes DisplayMode {
-                get
-                {
-                    return (BlackBG.Value ? DisplayModes.BlackBackground : DisplayModes.None) |
-                            (Borderless.Value ? DisplayModes.Borderless : DisplayModes.None) |
-                            (ColoredOff.Value ? DisplayModes.ColoredOff : DisplayModes.None);
-                }
-            }
-            
             public static void Register()
             {
-                Category = MelonPreferences.CreateCategory("Input Display");
 
-                Enabled = Category.CreateEntry("Enabled", true);
-                SelectedColor = Category.CreateEntry("Color", Color.clear, description: "The color to make the input display.\nSet alpha to 0 to have it match the current card.");
+                NeonLite.Settings.AddHolder("InputDisplay");
 
-                BlackBG = Category.CreateEntry("Black Background", false, oldIdentifier: "Invert Input Display", description: "Whether or not to make the background black on press.\nThis can be stacked with the other style options!");
-                Borderless = Category.CreateEntry("Borderless", false, description: "Whether or not to make the keys borderless.\nThis can be stacked with the other style options!");
-                ColoredOff = Category.CreateEntry("Colored on Off", false, description: "Whether or not to make the keys colored when off instead of on.\nThis can be stacked with the other style options!");
-                SeperateScroll = Category.CreateEntry("Seperate Scrollwheel", false, description: "Whether or not to have a seperated scroll wheel instead of the scroll being inbuilt into the space bar.\nThis can be stacked with the other style options!");
-                InvertPressed = Category.CreateEntry("Invert Pressed", false, description: "Completely inverts the on/off states for the buttons.\n(I recommend combining this with separated scrollwheel)");
+                enabled = NeonLite.Settings.Add(h, "", "enabled", "Enabled", null, true);
+                enabled.SetupForModule(Activate, static (_, after) => after);
 
-                AlwaysColor = Category.CreateEntry("Always Colored when Pressed", false, description: "If Colored on Off is set, this enables the color to be applied even when the button is pressed.");
-                FaustasMode = Category.CreateEntry("Rainbow Colors", false, description: "Turning this on sets the color to change in a rainbow-like gradient!");
-                FaustasSpeed = Category.CreateEntry("Rainbow Speed", 10f, validator: new ValueRange<float>(0, 180));
+                onTexture = NeonLite.Settings.Add(h, "", "onTexture", "Pressed Texture Folder", "Which folder to use for textures where buttons are pressed.", "Pressed/Default");
+                offTexture = NeonLite.Settings.Add(h, "", "offTexture", "Unpressed Texture Folder", "Which folder to use for textures where buttons aren't pressed.", "Unpressed/Default");
+                layout = NeonLite.Settings.Add(h, "", "layout", "Layout", "The name of the layout JSON in the Layouts folder to use.", "Default");
 
+                onTexture.OnEntryValueChanged.Subscribe((_, _) => DisplayObject.Setup());
+                offTexture.OnEntryValueChanged.Subscribe((_, _) => DisplayObject.Setup());
+                layout.OnEntryValueChanged.Subscribe((_, _) => DisplayObject.Setup());
+
+                selectedColor = NeonLite.Settings.Add(h, "", "color", "Color", "The color to make the input display.\nSet alpha to 0 to have it match the current card.", Color.clear);
+                colorMode = NeonLite.Settings.Add(h, "", "colorMode", "Color Mode", "When to color the buttons.\n(White is replaced with the color.)", ColorMode.Pressed);
+                faustasMode = NeonLite.Settings.Add(h, "", "faustasMode", "Rainbow Colors", "Turning this on sets the color to change in a rainbow-like gradient!", false);
+                faustasSpeed = NeonLite.Settings.Add(h, "", "faustasSpeed", "Rainbow Speed", null, 10f, new ValueRange<float>(0, 180));
+
+                var category = MelonPreferences.CreateCategory("Input Display");
+                var migrated = category.CreateEntry("MIGRATED", false, is_hidden: true).Value;
+                if (!migrated)
+                {
+                    category.GetEntry<bool>("MIGRATED").Value = true;
+
+                    T CreateOrFind<T>(string name, T defaultVal)
+                    {
+                        try
+                        {
+                            var e = category.CreateEntry(name, defaultVal, dont_save_default: true);
+                            T val = e.Value;
+                            category.DeleteEntry(name);
+                            return val;
+                        }
+                        catch
+                        {
+                            var e = category.GetEntry<T>(name);
+                            T val = e.Value;
+                            category.DeleteEntry(name);
+                            return val;
+                        }
+                    }
+
+                    var entry = CreateOrFind("Enabled", false);
+                    enabled.Value = entry;
+                    if (entry)
+                    {
+
+                        selectedColor.Value = CreateOrFind("Color", Color.clear);
+                        faustasMode.Value = CreateOrFind("Rainbow Colors", false);
+                        faustasSpeed.Value = CreateOrFind("Rainbow speed", 10f);
+
+                        var displayMode = CreateOrFind("Black Background", false) ? DisplayModes.BlackBackground : DisplayModes.None;
+                        displayMode |= CreateOrFind("Borderless", false) ? DisplayModes.Borderless : DisplayModes.None;
+                        var coloredOff = CreateOrFind("Colored on Off", false);
+                        displayMode |= coloredOff ? DisplayModes.ColoredOff : DisplayModes.None;
+
+                        string on = displayMode switch
+                        {
+                            _ when displayMode.HasFlag(DisplayModes.BlackBackground) => "Pressed/Black",
+                            _ when displayMode.HasFlag(DisplayModes.Borderless) => "Pressed/Borderless",
+                            _ => "Pressed/Default"
+                        };
+
+                        string off = displayMode switch
+                        {
+                            _ when displayMode.HasFlag(DisplayModes.ColoredOff) => displayMode switch
+                            {
+                                _ when displayMode.HasFlag(DisplayModes.Borderless) => "Unpressed/White Borderless",
+                                _ => "Unpressed/White"
+                            },
+                            _ when displayMode.HasFlag(DisplayModes.Borderless) => "Unpressed/Borderless",
+                            _ => "Unpressed/Default"
+                        };
+
+                        if (coloredOff)
+                        {
+                            var always = CreateOrFind("Always Colored when Pressed", false);
+                            if (always)
+                                colorMode.Value = ColorMode.Always;
+                            else
+                                colorMode.Value = ColorMode.Unpressed;
+                        }
+                        else
+                            colorMode.Value = ColorMode.Pressed;
+
+                            var seperateScroll = CreateOrFind("Seperate Scrollwheel", false);
+                        if (seperateScroll)
+                            layout.Value = "Seperate Scroll";
+
+                        var invertPressed = CreateOrFind("Invert Pressed", false);
+                        if (invertPressed)
+                            (on, off) = (off, on);
+
+                        onTexture.Value = on;
+                        offTexture.Value = off;
+
+                    }
+                    MelonPreferences.Save();
+                }
             }
         }
     }

@@ -1,0 +1,18 @@
+{
+    "name_of_texture": {
+        // If the texture is missing, it will not show up.
+        // However, if the texture is missing only on the unpressed texture for example, it will not show up while unpressed.
+        // Same goes for the pressed texture.
+        "x": 0, // The X position on the grid, relative to top left corner.
+        "y": 0, // The Y position on the grid relative to top left corner.
+        "scale": 1, // Additional scaling. Scales both X and Y.
+        "layer": 0, // Set this to negatives for stuff like scroll wheel.
+        "fakeAA": "", // Which "fakeAA" texture to use, relative to the Textures folder. Blank means none, not present means default.
+        "gameAction": "FireCard", // If present, which GameAction to read from.
+        "axis": "-", // If present, read the gameAction as an axis. + or - means to "press" on pos/neg direction. This with Jump reads coyote.
+        "keycode": "R", // If present without gameAction, this will read the specific key instead.
+        // If neither gameAction nor keycode are present, the image will always be the unpressed texture.
+        // ! All of these fields except for gameAction, axis, and keycode can be overriden by a texture's override.json. !
+        "forceInvisible": true // Forces the unpressed texture variant to be invisible. Useful for coyote.
+    }
+}

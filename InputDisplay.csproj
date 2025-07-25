@@ -41,10 +41,17 @@
     <Reference Include="MelonLoader">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\MelonLoader\net35\MelonLoader.dll</HintPath>
     </Reference>
+    <Reference Include="NeonLite">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Mods\NeonLite.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="Unity.InputSystem, Version=1.2.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Neon White_Data\Managed\Unity.InputSystem.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Neon White_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine.CoreModule">
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Neon White_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
@@ -53,9 +60,15 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Neon White_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
     </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Neon White_Data\Managed\UnityEngine.JSONSerializeModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UniverseLib.Mono">
+      <HintPath>C:\Program Files (x86)\Steam\steamapps\common\Neon White\Mods\UniverseLib.Mono.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Hooks.cs" />
     <Compile Include="InputDisplay.cs" />
     <Compile Include="Objects\DisplayObject.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -72,25 +85,8 @@
       <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup>
-    <Content Include="Resources\Images\Discard.png" />
-    <Content Include="Resources\Images\Down.png" />
-    <Content Include="Resources\Images\Fake1.png" />
-    <Content Include="Resources\Images\Fake2.png" />
-    <Content Include="Resources\Images\FakeS.png" />
-    <Content Include="Resources\Images\Fire.png" />
-    <Content Include="Resources\Images\Jump.png" />
-    <Content Include="Resources\Images\Left.png" />
-    <Content Include="Resources\Images\Right.png" />
-    <Content Include="Resources\Images\ScrollJump.png" />
-    <Content Include="Resources\Images\ScrollSBack.png" />
-    <Content Include="Resources\Images\ScrollSFront.png" />
-    <Content Include="Resources\Images\Swap.png" />
-    <Content Include="Resources\Images\Up.png" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
+    <PostBuildEvent>copy $(TargetPath) "C:\Program Files (x86)\Steam\steamapps\common\Neon White\Mods"</PostBuildEvent>
   </PropertyGroup>
 </Project>

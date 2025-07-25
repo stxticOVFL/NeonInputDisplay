@@ -1,0 +1,71 @@
+{
+    "up": {
+        "x": 1,
+        "y": 0,
+        "gameAction": "MoveVertical",
+        "axis": "+"
+    },
+    "down": {
+        "x": 1,
+        "y": 1,
+        "gameAction": "MoveVertical",
+        "axis": "-"
+    },
+    "left": {
+        "x": 0,
+        "y": 1,
+        "gameAction": "MoveHorizontal",
+        "axis": "-"
+    },
+    "right": {
+        "x": 2,
+        "y": 1,
+        "gameAction": "MoveHorizontal",
+        "axis": "+"
+    },
+    "fire": {
+        "x": 2,
+        "y": 0,
+        "gameAction": "FireCard",
+        "fakeAA": "fake2"
+    },
+    "discard": {
+        "x": 4,
+        "y": 0,
+        "gameAction": "FireCardAlt",
+        "fakeAA": "fake2"
+    },
+    "swap": {
+        "x": 0,
+        "y": 0,
+        "gameAction": "SwapCard"
+    },
+    "jump": {
+        "x": 3,
+        "y": 1,
+        "gameAction": "Jump",
+        "fakeAA": "fake3"
+    },
+    "scrollSB": {
+        "x": 6,
+        "y": 0.5,
+        "fakeAA": "fakeS",
+        "layer": -1
+    },
+    "scrollSD": {
+        "x": 6,
+        "y": 0.5,
+        "gameAction": "Jump",
+        "axis": "-",
+        "forceInvisible": true,
+        "fakeAA": ""
+    },
+    "scrollST": {
+        "x": 6,
+        "y": 0.5,
+        "gameAction": "Jump",
+        "axis": "+",
+        "forceInvisible": true,
+        "fakeAA": ""
+    }
+}
