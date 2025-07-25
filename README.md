@@ -9,6 +9,7 @@ A customizable basic input display for Neon White, based on the style of the OBS
 - Support for all forms of input including scroll-wheel coyote jumping as a special case
 - Customizable by color and inversion of the colored spaces
   - (e.g. The icons become colored while the rest becomes black) 
+- **New!** Maximum customizability with custom textures and layouts
 
 ## Installation
 ## __*Automatic*__ (preferred)
