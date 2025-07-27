@@ -17,6 +17,8 @@ namespace InputDisplay.Objects
 {
     public class DisplayObject : MonoBehaviour
     {
+        const float GRID_OFF = 0.66666666f;
+
         static private DisplayObject copy;
         static internal DisplayObject current;
 
@@ -146,7 +148,7 @@ namespace InputDisplay.Objects
                 CheckOverride(onOverride, button.pressed, kv.Key);
                 CheckOverride(offOverride, button.unpressed, kv.Key);
 
-                button.Finish();
+                button.FetchTextures();
                 newb.Add(button);
             }
 
@@ -198,8 +200,8 @@ namespace InputDisplay.Objects
             var cardUI = RM.ui.cardHUDUI;
             current = Instantiate(copy.gameObject, cardUI.transform).GetComponent<DisplayObject>();
 
-            const float off = 0.66666666f;
-            cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3(off * 2, 0, 0);
+            cardUI.abilityIconHolder.transform.GetChild(1).localPosition = new Vector3(GRID_OFF * 1, 0, 0);
+            cardUI.abilityIconHolder.transform.GetChild(2).localPosition = new Vector3(GRID_OFF * 2, 0, 0);
 
             current.BuildList();
             current.gameObject.SetActive(true);
@@ -275,12 +277,12 @@ namespace InputDisplay.Objects
         [Serializable]
         class DisplayProperties : ScriptableObject
         {
-            public float x;
-            public float y;
+            public float x = 0;
+            public float y = 0;
             public float scale = 1;
             public int layer = 0;
             public string fakeAA = null;
-            public bool forceInvisible;
+            public bool forceInvisible = false;
 
             [NonSerialized]
             internal Texture2D _fakeAA;
@@ -288,7 +290,7 @@ namespace InputDisplay.Objects
             [NonSerialized]
             internal Texture2D _tex;
 
-            internal void Finish()
+            internal void FetchTextures()
             {
                 _fakeAA = defaultFakeAA;
 
@@ -376,67 +378,89 @@ namespace InputDisplay.Objects
                     _downFunc = KeycodePress;
 
                 // build the Swap Chain .
-                const float off = 0.66666666f;
-
-                if (pressed.x != unpressed.x || pressed.y != unpressed.y)
+                if (_downFunc != null)
                 {
+                    if (pressed.x != unpressed.x || pressed.y != unpressed.y)
+                    {
+                        SwapChain += (prop, _) =>
+                        {
+                            transform.localPosition = new(GRID_OFF * prop.x, GRID_OFF * -prop.y);
+                        };
+                    }
+                    if (pressed.scale != unpressed.scale)
+                    {
+                        SwapChain += (prop, pre) =>
+                        {
+                            // TODO: check the math on this. im lazy
+                            var t = transform.localScale;
+                            transform.localPosition -= new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
+                            t /= pre.scale;
+                            var preS = t;
+                            t *= prop.scale;
+                            transform.localScale = t;
+                            transform.localPosition += new Vector3((t.x - preS.x) / 2, (t.y - preS.y) / 2, 0);
+                        };
+                    }
+                    if (pressed.layer != unpressed.layer)
+                    {
+                        SwapChain += (prop, pre) =>
+                        {
+                            material.renderQueue -= pre.layer;
+                            material.renderQueue += prop.layer;
+                            _fakeAA.renderQueue = material.renderQueue + 1;
+                        };
+                    }
+                    if (pressed.fakeAA != unpressed.fakeAA)
+                    {
+                        SwapChain += (prop, _) => _fakeAA.SetTexture(mainTex, prop._fakeAA);
+                    }
+
                     SwapChain += (prop, _) =>
                     {
-                        transform.localPosition = new(off * prop.x, off * -prop.y);
+                        material.SetTexture(mainTex, prop._tex);
+                        SetColor();
                     };
-                }
-                if (pressed.scale != unpressed.scale)
-                {
-                    SwapChain += (prop, pre) =>
-                    {
-                        // TODO: check the math on this. im lazy
-                        var t = transform.localScale;
-                        transform.localPosition -= new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
-                        t /= pre.scale;
-                        var preS = t;
-                        t *= prop.scale;
-                        transform.localScale = t;
-                        transform.localPosition += new Vector3((t.x - preS.x) / 2, (t.y - preS.y) / 2, 0);
-                    };
-                }
-                if (pressed.layer != unpressed.layer)
-                {
-                    SwapChain += (prop, pre) =>
-                    {
-                        material.renderQueue -= pre.layer;
-                        material.renderQueue += prop.layer;
-                        _fakeAA.renderQueue = material.renderQueue + 1;
-                    };
-                }
-                if (pressed.fakeAA != unpressed.fakeAA)
-                {
-                    SwapChain += (prop, _) => _fakeAA.SetTexture(mainTex, prop._fakeAA);
+
+                    _lastState = _downFunc();
                 }
 
-                SwapChain += (prop, _) =>
-                {
-                    material.SetTexture(mainTex, prop._tex);
-                    SetColor();
-                };
+                var prop = _lastState ? pressed : unpressed;
+
+                float aspect = 0;
+                if (unpressed._tex != InputDisplay.Blank)
+                    aspect = (float)unpressed._tex.width / unpressed._tex.height;
+                else if (pressed._tex != InputDisplay.Blank)
+                    aspect = (float)pressed._tex.width / pressed._tex.height;
+                else
+                    return; // both textures blank?? why the hell we do all this
+
+                transform.localPosition = new(GRID_OFF * prop.x, GRID_OFF * -prop.y);
+
+                var t = transform.localScale;
+                var pre = t;
+                if (aspect > 1)
+                    t.x *= aspect;
+                else
+                    t.y /= aspect;
+                transform.localScale = t * prop.scale;
+                transform.localPosition += new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
 
                 material = GetComponentInChildren<MeshRenderer>().material;
-                material.SetTexture(mainTex, unpressed._tex);
+                material.SetTexture(mainTex, prop._tex);
 
                 _fakeAA = transform.GetChild(0).GetComponent<MeshRenderer>().material;
-                _fakeAA.SetTexture(mainTex, unpressed._fakeAA);
+                _fakeAA.SetTexture(mainTex, prop._fakeAA);
 
-                material.renderQueue += unpressed.layer;
+                material.renderQueue += prop.layer;
                 _fakeAA.renderQueue = material.renderQueue + 1;
 
                 SetColor();
             }
 
-            internal void Finish()
+            internal void FetchTextures()
             {
-                const float off = 0.66666666f;
-
-                pressed.Finish();
-                unpressed.Finish();
+                pressed.FetchTextures();
+                unpressed.FetchTextures();
 
                 Texture2D GetTexture(string path)
                 {
@@ -447,34 +471,17 @@ namespace InputDisplay.Objects
                         return InputDisplay.Blank;
                 }
 
-                transform.localPosition = new(off * unpressed.x, off * -unpressed.y);
-
                 pressed._tex = GetTexture(Settings.onTexture.Value);
                 if (pressed.forceInvisible)
                     unpressed._tex = InputDisplay.Blank;
                 else
                     unpressed._tex = GetTexture(Settings.offTexture.Value);
-
-                float aspect = 0;
-                if (unpressed._tex != InputDisplay.Blank)
-                    aspect = (float)unpressed._tex.width / unpressed._tex.height;
-                else if (pressed._tex != InputDisplay.Blank)
-                    aspect = (float)pressed._tex.width / pressed._tex.height;
-                else
-                    return; // both textures blank?? why the hell we do all this
-
-                var t = transform.localScale;
-                var pre = t;
-                if (aspect > 1)
-                    t.x *= aspect;
-                else
-                    t.y /= aspect;
-                transform.localScale = t * unpressed.scale;
-                transform.localPosition += new Vector3((t.x - pre.x) / 2, (t.y - pre.y) / 2, 0);
             }
 
             void Update()
             {
+                if (_downFunc == null)
+                    return;
                 var s = _downFunc();
                 if (_lastState != s)
                 {
